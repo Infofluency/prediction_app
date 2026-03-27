@@ -16,11 +16,8 @@ export default function MovieGrid({ movies, loading, onSelect }: Props) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {Array.from({ length: 24 }).map((_, i) => (
-          <div
-            key={i}
-            className="rounded-lg overflow-hidden bg-[#1A1714] animate-pulse"
-            style={{ aspectRatio: '2/3' }}
-          />
+          <div key={i} className="rounded-lg overflow-hidden bg-[#1A1714] animate-pulse"
+            style={{ aspectRatio: '2/3' }} />
         ))}
       </div>
     )
@@ -29,10 +26,8 @@ export default function MovieGrid({ movies, loading, onSelect }: Props) {
   if (movies.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-32 text-center">
-        <p
-          className="text-3xl text-[#C9A84C] mb-3"
-          style={{ fontFamily: 'Playfair Display, serif' }}
-        >
+        <p className="text-3xl text-[#C9A84C] mb-3"
+          style={{ fontFamily: 'Playfair Display, serif' }}>
           No films found
         </p>
         <p className="text-[#8C8375] text-sm">Try adjusting your filters</p>
@@ -43,25 +38,15 @@ export default function MovieGrid({ movies, loading, onSelect }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
       {movies.map((movie, i) => (
-        <MovieCard
-          key={movie.id}
-          movie={movie}
-          index={i}
-          onClick={() => onSelect(movie)}
-        />
+        <MovieCard key={movie.movie_id} movie={movie} index={i} onClick={() => onSelect(movie)} />
       ))}
     </div>
   )
 }
 
 function MovieCard({ movie, index, onClick }: { movie: Movie; index: number; onClick: () => void }) {
-  const posterUrl = movie.poster_path
-    ? `${TMDB_IMG}${movie.poster_path}`
-    : null
-
-  const year = movie.release_date
-    ? new Date(movie.release_date).getFullYear()
-    : null
+  const posterUrl = movie.poster_path ? `${TMDB_IMG}${movie.poster_path}` : null
+  const year = movie.release_date ? new Date(movie.release_date).getFullYear() : null
 
   return (
     <button
@@ -73,7 +58,6 @@ function MovieCard({ movie, index, onClick }: { movie: Movie; index: number; onC
         opacity: 0,
       }}
     >
-      {/* Poster */}
       <div className="relative overflow-hidden" style={{ aspectRatio: '2/3' }}>
         {posterUrl ? (
           <Image
@@ -89,28 +73,22 @@ function MovieCard({ movie, index, onClick }: { movie: Movie; index: number; onC
           </div>
         )}
 
-        {/* Vote badge */}
         {movie.vote_average > 0 && (
           <div className="absolute top-2 right-2 bg-[rgba(13,13,13,0.85)] backdrop-blur-sm rounded px-1.5 py-0.5 text-xs font-medium text-[#E8C97A]">
             ★ {movie.vote_average.toFixed(1)}
           </div>
         )}
 
-        {/* Hover overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[rgba(13,13,13,0.9)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-          <span className="text-xs text-[#F5F0E8] leading-tight line-clamp-3"
-            style={{ fontFamily: 'DM Sans, sans-serif' }}>
+          <span className="text-xs text-[#F5F0E8] leading-tight line-clamp-3">
             {movie.overview}
           </span>
         </div>
       </div>
 
-      {/* Title */}
       <div className="p-2.5">
-        <p
-          className="text-sm font-semibold text-[#F5F0E8] leading-tight line-clamp-2 group-hover:text-[#E8C97A] transition-colors"
-          style={{ fontFamily: 'Playfair Display, serif' }}
-        >
+        <p className="text-sm font-semibold text-[#F5F0E8] leading-tight line-clamp-2 group-hover:text-[#E8C97A] transition-colors"
+          style={{ fontFamily: 'Playfair Display, serif' }}>
           {movie.title}
         </p>
         <p className="text-xs text-[#8C8375] mt-1">{year}</p>

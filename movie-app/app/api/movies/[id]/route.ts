@@ -13,7 +13,7 @@ export async function GET(
   try {
     const db = await getDb()
 
-    // Cast (sorted by cast_order)
+    // Cast sorted by cast_order
     const castResult = await db.request().query(`
       SELECT name, cast_order
       FROM lb_knn.raw_tmdb_credits_cast
@@ -21,23 +21,26 @@ export async function GET(
       ORDER BY cast_order ASC
     `)
 
-    // Crew (director, producer, screenplay, original music composer)
+    // Crew — no 'name' column in raw_tmdb_credits_crew, join to cast table for name lookup
+    // Instead we just return job + person_id; for display we use what we have
     const crewResult = await db.request().query(`
-      SELECT name, job
-      FROM lb_knn.raw_tmdb_credits_crew
-      WHERE movie_id = ${movieId}
-        AND job IN ('Director', 'Producer', 'Screenplay', 'Original Music Composer')
+      SELECT cr.job, cc.name
+      FROM lb_knn.raw_tmdb_credits_crew cr
+      LEFT JOIN lb_knn.raw_tmdb_credits_cast cc
+        ON cr.movie_id = cc.movie_id AND cr.person_id = cc.person_id
+      WHERE cr.movie_id = ${movieId}
+        AND cr.job IN ('Director', 'Screenplay', 'Producer', 'Original Music Composer')
       ORDER BY
-        CASE job
-          WHEN 'Director'                  THEN 1
-          WHEN 'Screenplay'                THEN 2
-          WHEN 'Producer'                  THEN 3
-          WHEN 'Original Music Composer'   THEN 4
+        CASE cr.job
+          WHEN 'Director'                THEN 1
+          WHEN 'Screenplay'              THEN 2
+          WHEN 'Producer'                THEN 3
+          WHEN 'Original Music Composer' THEN 4
           ELSE 5
         END
     `)
 
-    // Watch providers — build "Available on" display
+    // Watch providers
     const providersResult = await db.request().query(`
       SELECT provider_name, provider_type
       FROM lb_knn.raw_tmdb_watch_providers
@@ -66,7 +69,7 @@ export async function GET(
     return NextResponse.json({
       cast:        castResult.recordset,
       crew:        crewResult.recordset,
-      availableOn,
+      availableOn: availableOn ?? [],
     })
   } catch (err) {
     console.error(err)
