@@ -1,9 +1,15 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useSession, signOut } from 'next-auth/react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import FilterPanel from '@/components/FilterPanel'
 import MovieGrid from '@/components/MovieGrid'
 import MovieModal from '@/components/MovieModal'
+import LetterboxdImport from '@/components/LetterboxdImport'
+import ManualRating from '@/components/ManualRating'
+import OnboardingModal from '@/components/OnboardingModal'
 
 export type Movie = {
   movie_id: number
@@ -33,7 +39,9 @@ export type Filters = {
   runtimeMax: number
   yearMin: number
   yearMax: number
-  popularityMin: number  // 0–100 percentile
+  popularityMin: number
+  hideWatched: boolean
+  watchlistOnly: boolean
 }
 
 export type FilterOptions = {
@@ -69,11 +77,17 @@ const DEFAULT_FILTERS: Filters = {
   yearMin:        1900,
   yearMax:        new Date().getFullYear(),
   popularityMin:  0,
+  hideWatched:    false,
+  watchlistOnly:  false,
 }
 
 const PAGE_SIZE = 100
 
 export default function Home() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
   const [movies, setMovies]               = useState<Movie[]>([])
   const [loading, setLoading]             = useState(true)
   const [loadingMore, setLoadingMore]     = useState(false)
@@ -84,6 +98,25 @@ export default function Home() {
   const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null)
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null)
   const sentinelRef                       = useRef<HTMLDivElement>(null)
+
+  // User library data
+  const [userWatchlist, setUserWatchlist]   = useState<Set<number>>(new Set())
+  const [userRatings, setUserRatings]       = useState<Record<number, number>>({})
+
+  // Modal states
+  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showManualRating, setShowManualRating] = useState(false)
+  const [importKey, setImportKey]               = useState(0)
+  const [hasLetterboxd, setHasLetterboxd]   = useState(false)
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      const isGuest = document.cookie.includes('guest=true')
+      if (!isGuest) {
+        router.push('/login')
+      }
+    }
+  }, [status, router])
 
   useEffect(() => {
     fetch('/api/filters')
@@ -99,6 +132,45 @@ export default function Home() {
         }
       })
   }, [])
+
+  // Fetch user library + check onboarding
+  const refreshLibrary = useCallback(() => {
+    fetch('/api/user/library')
+      .then(r => r.json())
+      .then(data => {
+        setUserWatchlist(new Set(data.watchlist || []))
+        setUserRatings(data.ratings || {})
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    if (session) {
+      refreshLibrary()
+
+      // Show onboarding if:
+      // 1. Coming from signup with ?onboard=true
+      // 2. New Google user (isNewUser flag in session)
+      const shouldOnboard = searchParams.get('onboard') === 'true' || !!(session.user as any)?.isNewUser
+
+      if (shouldOnboard) {
+        fetch('/api/letterboxd/import')
+          .then(r => r.json())
+          .then(data => {
+            // Only show onboarding if they haven't imported data yet
+            if (!data.imported) {
+              setHasLetterboxd(!!data.hasLetterboxd)
+              setShowOnboarding(true)
+            }
+            // Clean up URL if it has the param
+            if (searchParams.get('onboard')) {
+              router.replace('/', { scroll: false })
+            }
+          })
+          .catch(() => {})
+      }
+    }
+  }, [session, searchParams, refreshLibrary, router])
 
   const buildParams = (f: Filters, s: string, p: number, opts: FilterOptions | null) =>
     new URLSearchParams({
@@ -116,6 +188,9 @@ export default function Home() {
       popRawMax:      String(opts?.popularityRange?.max_popularity ?? 999999),
       sortBy:         s,
       page:           String(p),
+      hideWatched:    String(f.hideWatched),
+      watchlistOnly:  String(f.watchlistOnly),
+      userId:         String((session?.user as any)?.userId || ''),
     })
 
   const fetchMovies = useCallback(async (f: Filters, s: string, opts: FilterOptions | null) => {
@@ -134,11 +209,11 @@ export default function Home() {
     } finally {
       setLoading(false)
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     fetchMovies(filters, sortBy, filterOptions)
-  }, [filters, sortBy, filterOptions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [filters, sortBy, filterOptions, session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading) return
@@ -156,7 +231,7 @@ export default function Home() {
     } finally {
       setLoadingMore(false)
     }
-  }, [loadingMore, hasMore, loading, page, filters, sortBy, filterOptions]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [loadingMore, hasMore, loading, page, filters, sortBy, filterOptions, session]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = sentinelRef.current
@@ -168,6 +243,19 @@ export default function Home() {
     observer.observe(el)
     return () => observer.disconnect()
   }, [loadMore])
+
+  if (status === 'loading') {
+    return (
+      <main className="min-h-screen flex items-center justify-center">
+        <div className="flex gap-2">
+          {[0,1,2].map(i => (
+            <div key={i} className="w-2 h-2 rounded-full bg-[#C9A84C] animate-bounce"
+              style={{ animationDelay: `${i * 0.15}s` }} />
+          ))}
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="min-h-screen">
@@ -197,6 +285,37 @@ export default function Home() {
                 : <span>{movies.length.toLocaleString()} films</span>
               }
             </div>
+
+            {session ? (
+              <div className="flex items-center gap-2 border-l border-[rgba(201,168,76,0.15)] pl-4">
+                <LetterboxdImport key={importKey} onImportComplete={refreshLibrary} />
+                <button
+                  onClick={() => setShowManualRating(true)}
+                  className="text-xs px-2 py-1 border border-[rgba(201,168,76,0.2)] rounded text-[#8C8375] hover:text-[#E8C97A] hover:border-[rgba(201,168,76,0.4)] transition-colors"
+                >
+                  Rate Movies
+                </button>
+                <span className="text-xs text-[#8C8375] max-w-[120px] truncate ml-1">
+                  {session.user?.name || session.user?.email}
+                </span>
+                <button
+                  onClick={() => {
+                    document.cookie = 'guest=; path=/; max-age=0'
+                    signOut({ callbackUrl: '/login' })
+                  }}
+                  className="text-xs text-[#8C8375] hover:text-[#E8C97A] transition-colors"
+                >
+                  Sign out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                className="text-xs px-3 py-1.5 border border-[rgba(201,168,76,0.3)] rounded-md text-[#E8C97A] hover:bg-[rgba(201,168,76,0.1)] transition-colors"
+              >
+                Sign in
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -216,11 +335,18 @@ export default function Home() {
                   }
                 : DEFAULT_FILTERS
             )}
+            isLoggedIn={!!session}
           />
         </aside>
 
         <div className="flex-1 min-w-0">
-          <MovieGrid movies={movies} loading={loading} onSelect={setSelectedMovie} />
+          <MovieGrid
+            movies={movies}
+            loading={loading}
+            onSelect={setSelectedMovie}
+            userWatchlist={userWatchlist}
+            userRatings={userRatings}
+          />
           <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-4">
             {loadingMore && (
               <div className="flex gap-2">
@@ -239,6 +365,33 @@ export default function Home() {
 
       {selectedMovie && (
         <MovieModal movie={selectedMovie} onClose={() => setSelectedMovie(null)} />
+      )}
+
+      {/* Onboarding modal — first login only */}
+      {showOnboarding && (
+        <OnboardingModal
+          hasLetterboxd={hasLetterboxd}
+          onSyncLetterboxd={() => {
+            setShowOnboarding(false)
+            refreshLibrary()
+            setImportKey(k => k + 1)
+          }}
+          onRateManually={() => {
+            setShowOnboarding(false)
+            setShowManualRating(true)
+          }}
+          onClose={() => {
+            setShowOnboarding(false)
+          }}
+        />
+      )}
+
+      {/* Manual rating modal */}
+      {showManualRating && (
+        <ManualRating
+          onClose={() => setShowManualRating(false)}
+          onRated={refreshLibrary}
+        />
       )}
     </main>
   )

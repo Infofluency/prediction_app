@@ -9,9 +9,11 @@ type Props = {
   movies: Movie[]
   loading: boolean
   onSelect: (m: Movie) => void
+  userWatchlist: Set<number>
+  userRatings: Record<number, number>
 }
 
-export default function MovieGrid({ movies, loading, onSelect }: Props) {
+export default function MovieGrid({ movies, loading, onSelect, userWatchlist, userRatings }: Props) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
@@ -38,13 +40,32 @@ export default function MovieGrid({ movies, loading, onSelect }: Props) {
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
       {movies.map((movie, i) => (
-        <MovieCard key={movie.movie_id} movie={movie} index={i} onClick={() => onSelect(movie)} />
+        <MovieCard
+          key={movie.movie_id}
+          movie={movie}
+          index={i}
+          onClick={() => onSelect(movie)}
+          inWatchlist={userWatchlist.has(movie.movie_id)}
+          userRating={userRatings[movie.movie_id] ?? null}
+        />
       ))}
     </div>
   )
 }
 
-function MovieCard({ movie, index, onClick }: { movie: Movie; index: number; onClick: () => void }) {
+function MovieCard({
+  movie,
+  index,
+  onClick,
+  inWatchlist,
+  userRating,
+}: {
+  movie: Movie
+  index: number
+  onClick: () => void
+  inWatchlist: boolean
+  userRating: number | null
+}) {
   const posterUrl = movie.poster_path ? `${TMDB_IMG}${movie.poster_path}` : null
   const year = movie.release_date ? new Date(movie.release_date).getFullYear() : null
 
@@ -73,9 +94,17 @@ function MovieCard({ movie, index, onClick }: { movie: Movie; index: number; onC
           </div>
         )}
 
-        {movie.vote_average > 0 && (
+        {/* Watchlist indicator — top left */}
+        {inWatchlist && (
+          <div className="absolute top-2 left-2 bg-[rgba(13,13,13,0.85)] backdrop-blur-sm rounded px-1.5 py-0.5 text-xs">
+            🕐
+          </div>
+        )}
+
+        {/* User rating — top right (only if user has rated) */}
+        {userRating !== null && userRating > 0 && (
           <div className="absolute top-2 right-2 bg-[rgba(13,13,13,0.85)] backdrop-blur-sm rounded px-1.5 py-0.5 text-xs font-medium text-[#E8C97A]">
-            ★ {movie.vote_average.toFixed(1)}
+            ★ {userRating % 1 === 0 ? userRating.toFixed(0) : userRating.toFixed(1)}
           </div>
         )}
 

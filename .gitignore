@@ -36,3 +36,8 @@ data/raw/tmdb_watch_providers_batch0005.csv
 data/raw/tmdb_watch_providers_batch0006.csv
 data/raw/tmdb_watch_providers_batch0007.csv
 data/raw/tmdb_watch_providers_batch0008.csv
+node_modules/
+.env
+.playwright-profile/
+__azurite_db_blob__.json
+__azurite_db_blob_extent__.json

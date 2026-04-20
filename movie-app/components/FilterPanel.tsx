@@ -11,6 +11,7 @@ type Props = {
   options: FilterOptions | null
   onChange: (f: Filters) => void
   onReset: () => void
+  isLoggedIn: boolean
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -126,7 +127,7 @@ function Dropdown({
   )
 }
 
-export default function FilterPanel({ filters, options, onChange, onReset }: Props) {
+export default function FilterPanel({ filters, options, onChange, onReset, isLoggedIn }: Props) {
   const safeFilters = {
     ...filters,
     genres:        filters.genres        ?? [],
@@ -147,6 +148,8 @@ export default function FilterPanel({ filters, options, onChange, onReset }: Pro
     safeFilters.runtimeMin > 0 ||
     safeFilters.runtimeMax < 300 ||
     safeFilters.popularityMin > 0 ||
+    safeFilters.hideWatched ||
+    safeFilters.watchlistOnly ||
     (options && (
       safeFilters.yearMin > options.yearRange?.min_year ||
       safeFilters.yearMax < options.yearRange?.max_year
@@ -322,6 +325,60 @@ export default function FilterPanel({ filters, options, onChange, onReset }: Pro
             <span>Top 1%</span>
           </div>
         </div>
+
+        {/* ── My Library filters (only for logged-in users) ── */}
+        {isLoggedIn && (
+          <div className="border-t border-[rgba(201,168,76,0.1)] pt-4 pb-4">
+            <p className="text-xs font-medium tracking-wider uppercase text-[#8C8375] mb-4">
+              My Library
+            </p>
+            <div className="space-y-3">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
+                  safeFilters.hideWatched
+                    ? 'bg-[#C9A84C] border-[#C9A84C]'
+                    : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
+                }`}
+                  onClick={() => set('hideWatched', !safeFilters.hideWatched)}
+                >
+                  {safeFilters.hideWatched && (
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none">
+                      <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </span>
+                <span
+                  className="text-xs text-[#8C8375] group-hover:text-[#C5BFB4] transition-colors"
+                  onClick={() => set('hideWatched', !safeFilters.hideWatched)}
+                >
+                  Hide films I've seen
+                </span>
+              </label>
+
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <span className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
+                  safeFilters.watchlistOnly
+                    ? 'bg-[#C9A84C] border-[#C9A84C]'
+                    : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
+                }`}
+                  onClick={() => set('watchlistOnly', !safeFilters.watchlistOnly)}
+                >
+                  {safeFilters.watchlistOnly && (
+                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none">
+                      <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
+                </span>
+                <span
+                  className="text-xs text-[#8C8375] group-hover:text-[#C5BFB4] transition-colors"
+                  onClick={() => set('watchlistOnly', !safeFilters.watchlistOnly)}
+                >
+                  Watchlist only
+                </span>
+              </label>
+            </div>
+          </div>
+        )}
 
       </div>
     </div>

@@ -7,9 +7,10 @@ export async function GET() {
 
     const [providers, genresRaw, languages, countriesRaw, yearsRaw, voteCountRaw] = await Promise.all([
       db.request().query(`
-        SELECT DISTINCT provider_name
-        FROM lb_knn.raw_tmdb_watch_providers
-        ORDER BY provider_name
+        SELECT DISTINCT provider_name_grouped AS provider_name
+        FROM lb_knn.vw_watch_provider_groups
+        WHERE provider_name_grouped IS NOT NULL
+        ORDER BY provider_name_grouped
       `),
       db.request().query(`
         SELECT DISTINCT genres

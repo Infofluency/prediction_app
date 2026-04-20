@@ -301,7 +301,7 @@ def enrich_movie(movie_id: int) -> dict:
                 })
 
     # Posters — top N by vote_count (TMDB returns sorted desc by default)
-    img = tmdb_get(f"/movie/{movie_id}/images")
+    img = tmdb_get(f"/movie/{movie_id}/images", params={"include_image_language": "en,null"})
     seen_paths = set()
     poster_count = 0
     for poster in img.get("posters", []):

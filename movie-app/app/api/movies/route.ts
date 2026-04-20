@@ -19,6 +19,11 @@ export async function GET(req: NextRequest) {
   const offset         = (page - 1) * pageSize
   const popularityPct  = parseInt(searchParams.get('popularityMin') || '0')
 
+  // New filters
+  const hideWatched    = searchParams.get('hideWatched') === 'true'
+  const watchlistOnly  = searchParams.get('watchlistOnly') === 'true'
+  const userId         = parseInt(searchParams.get('userId') || '0') || null
+
   const sortMap: Record<string, string> = {
     vote_count:        'ml.vote_count DESC',
     vote_average:      'ml.vote_average DESC',
@@ -34,8 +39,6 @@ export async function GET(req: NextRequest) {
   try {
     const db = await getDb()
 
-    // Step 1: if popularity filter active, get the threshold vote_count via percentile
-    // Run this as a separate query to avoid conflicts with OFFSET/FETCH
     let popularityWhere = ''
     if (popularityPct > 0) {
       const pctResult = await db.request().query(`
@@ -56,10 +59,10 @@ export async function GET(req: NextRequest) {
     if (providers.length > 0) {
       const list = providers.map(p => `'${p.replace(/'/g, "''")}'`).join(', ')
       const typeFilter = includeRentBuy
-        ? `wp.provider_name IN (${list})`
-        : `wp.provider_name IN (${list}) AND wp.provider_type = 'flatrate'`
-      providerJoin  = `INNER JOIN lb_knn.raw_tmdb_watch_providers wp ON ml.movie_id = wp.movie_id`
-      providerWhere = `AND (${typeFilter})`
+        ? `wpg.provider_name_grouped IN (${list})`
+        : `wpg.provider_name_grouped IN (${list}) AND wpg.provider_type = 'flatrate'`
+      providerJoin  = `INNER JOIN lb_knn.vw_watch_provider_groups wpg ON ml.movie_id = wpg.movie_id`
+      providerWhere = `AND (${typeFilter}) AND wpg.provider_name_grouped IS NOT NULL`
     }
 
     const genreWhere = genres.length > 0
@@ -73,6 +76,22 @@ export async function GET(req: NextRequest) {
     const countryWhere = countries.length > 0
       ? `AND (${countries.map(c => `ml.production_countries LIKE '%${c.replace(/'/g, "''")}%'`).join(' OR ')})`
       : ''
+
+    // Hide watched: exclude movies the user has rated
+    let hideWatchedWhere = ''
+    if (hideWatched && userId) {
+      hideWatchedWhere = `AND ml.movie_id NOT IN (
+        SELECT movie_id FROM lb_knn.app_user_ratings
+        WHERE user_id = ${userId} AND movie_id IS NOT NULL
+      )`
+    }
+
+    // Watchlist only: only show movies in the user's watchlist
+    let watchlistJoin = ''
+    if (watchlistOnly && userId) {
+      watchlistJoin = `INNER JOIN lb_knn.app_user_watchlist uwl
+        ON ml.movie_id = uwl.movie_id AND uwl.user_id = ${userId}`
+    }
 
     const query = `
       SELECT DISTINCT
@@ -93,6 +112,7 @@ export async function GET(req: NextRequest) {
         p.file_path AS poster_path
       FROM lb_knn.raw_tmdb_movie_list ml
       ${providerJoin}
+      ${watchlistJoin}
       OUTER APPLY (
         SELECT TOP 1 file_path
         FROM lb_knn.raw_tmdb_posters
@@ -105,6 +125,7 @@ export async function GET(req: NextRequest) {
         ${countryWhere}
         ${providerWhere}
         ${popularityWhere}
+        ${hideWatchedWhere}
         AND (ml.runtime IS NULL OR (ml.runtime >= ${runtimeMin} AND ml.runtime <= ${runtimeMax}))
         AND (ml.release_date IS NULL OR (YEAR(ml.release_date) >= ${yearMin} AND YEAR(ml.release_date) <= ${yearMax}))
       ORDER BY ${orderBy}
