@@ -210,17 +210,31 @@ def scrape_user_ratings(session, username):
     return ratings, 200
 
 
+def _extract_film_id(div):
+    """Pull numeric film ID from data-postered-identifier JSON.
+    Letterboxd moved from data-film-id to a JSON blob on the react-component div.
+    e.g. {"lid":"FILw","uid":"film:994353",...} → "994353"
+    """
+    raw = div.get("data-postered-identifier", "")
+    if not raw:
+        return ""
+    try:
+        uid = json.loads(raw).get("uid", "")  # e.g. "film:994353"
+        return uid.split(":")[-1]             # → "994353"
+    except Exception:
+        return ""
+
+
 def parse_ratings_page(soup, username, ratings):
     for item in soup.select("li.poster-container, li.griditem"):
-        poster = item.find(attrs={"data-film-id": True})
-        if not poster:
+        div = item.find("div", class_="react-component")
+        if not div:
             continue
 
-        film_id = poster.get("data-film-id", "")
-        film_slug = poster.get("data-item-slug", "") or poster.get("data-film-slug", "")
-        raw_name = (poster.get("data-item-name", "")
-                    or poster.get("data-film-name", "")
-                    or poster.get("data-item-full-display-name", ""))
+        film_id = _extract_film_id(div)
+        film_slug = div.get("data-item-slug", "")
+        raw_name = (div.get("data-item-name", "")
+                    or div.get("data-item-full-display-name", ""))
 
         name, year = extract_name_year(raw_name)
 
