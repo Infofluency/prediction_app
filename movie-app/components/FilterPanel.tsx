@@ -7,11 +7,12 @@ import { RotateCcw, ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import type { Filters, FilterOptions } from '@/app/page'
 
 type Props = {
-  filters: Filters
-  options: FilterOptions | null
-  onChange: (f: Filters) => void
-  onReset: () => void
-  isLoggedIn: boolean
+  filters:          Filters
+  options:          FilterOptions | null
+  onChange:         (f: Filters) => void
+  onReset:          () => void
+  isLoggedIn:       boolean
+  showHideWatched?: boolean  // default true — pass false on My Next Watch page
 }
 
 const LANGUAGE_NAMES: Record<string, string> = {
@@ -127,7 +128,14 @@ function Dropdown({
   )
 }
 
-export default function FilterPanel({ filters, options, onChange, onReset, isLoggedIn }: Props) {
+export default function FilterPanel({
+  filters,
+  options,
+  onChange,
+  onReset,
+  isLoggedIn,
+  showHideWatched = true,
+}: Props) {
   const safeFilters = {
     ...filters,
     genres:        filters.genres        ?? [],
@@ -155,10 +163,10 @@ export default function FilterPanel({ filters, options, onChange, onReset, isLog
       safeFilters.yearMax < options.yearRange?.max_year
     ))
 
-  const providers = options?.providers ?? []
-  const genres    = options?.genres    ?? []
-  const langOptions = (options?.languages ?? []).map(l => LANGUAGE_NAMES[l] ?? l.toUpperCase())
-  const countries = options?.countries ?? []
+  const providers     = options?.providers ?? []
+  const genres        = options?.genres    ?? []
+  const langOptions   = (options?.languages ?? []).map(l => LANGUAGE_NAMES[l] ?? l.toUpperCase())
+  const countries     = options?.countries ?? []
 
   const langCodeMap = Object.fromEntries(
     (options?.languages ?? []).map(l => [LANGUAGE_NAMES[l] ?? l.toUpperCase(), l])
@@ -184,6 +192,7 @@ export default function FilterPanel({ filters, options, onChange, onReset, isLog
 
       {/* Scrollable filter body */}
       <div className="overflow-y-auto flex-1 pr-1">
+
         {/* Streaming */}
         <Dropdown
           label="Streaming"
@@ -333,34 +342,40 @@ export default function FilterPanel({ filters, options, onChange, onReset, isLog
               My Library
             </p>
             <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer group">
-                <span className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
-                  safeFilters.hideWatched
-                    ? 'bg-[#C9A84C] border-[#C9A84C]'
-                    : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
-                }`}
-                  onClick={() => set('hideWatched', !safeFilters.hideWatched)}
-                >
-                  {safeFilters.hideWatched && (
-                    <svg width="10" height="10" viewBox="0 0 8 8" fill="none">
-                      <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  )}
-                </span>
-                <span
-                  className="text-xs text-[#8C8375] group-hover:text-[#C5BFB4] transition-colors"
-                  onClick={() => set('hideWatched', !safeFilters.hideWatched)}
-                >
-                  Hide films I've seen
-                </span>
-              </label>
+
+              {/* Hide films I've seen — hidden on My Next Watch page */}
+              {showHideWatched && (
+                <label className="flex items-center gap-3 cursor-pointer group">
+                  <span
+                    className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
+                      safeFilters.hideWatched
+                        ? 'bg-[#C9A84C] border-[#C9A84C]'
+                        : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
+                    }`}
+                    onClick={() => set('hideWatched', !safeFilters.hideWatched)}
+                  >
+                    {safeFilters.hideWatched && (
+                      <svg width="10" height="10" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 4l2 2 4-4" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
+                  <span
+                    className="text-xs text-[#8C8375] group-hover:text-[#C5BFB4] transition-colors"
+                    onClick={() => set('hideWatched', !safeFilters.hideWatched)}
+                  >
+                    Hide films I've seen
+                  </span>
+                </label>
+              )}
 
               <label className="flex items-center gap-3 cursor-pointer group">
-                <span className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
-                  safeFilters.watchlistOnly
-                    ? 'bg-[#C9A84C] border-[#C9A84C]'
-                    : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
-                }`}
+                <span
+                  className={`w-4 h-4 rounded-sm border flex-shrink-0 flex items-center justify-center transition-colors ${
+                    safeFilters.watchlistOnly
+                      ? 'bg-[#C9A84C] border-[#C9A84C]'
+                      : 'border-[rgba(201,168,76,0.3)] group-hover:border-[rgba(201,168,76,0.5)]'
+                  }`}
                   onClick={() => set('watchlistOnly', !safeFilters.watchlistOnly)}
                 >
                   {safeFilters.watchlistOnly && (
@@ -376,6 +391,7 @@ export default function FilterPanel({ filters, options, onChange, onReset, isLog
                   Watchlist only
                 </span>
               </label>
+
             </div>
           </div>
         )}

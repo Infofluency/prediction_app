@@ -100,14 +100,14 @@ export default function Home() {
   const sentinelRef                       = useRef<HTMLDivElement>(null)
 
   // User library data
-  const [userWatchlist, setUserWatchlist]   = useState<Set<number>>(new Set())
-  const [userRatings, setUserRatings]       = useState<Record<number, number>>({})
+  const [userWatchlist, setUserWatchlist] = useState<Set<number>>(new Set())
+  const [userRatings, setUserRatings]     = useState<Record<number, number>>({})
 
   // Modal states
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [showOnboarding, setShowOnboarding]     = useState(false)
   const [showManualRating, setShowManualRating] = useState(false)
   const [importKey, setImportKey]               = useState(0)
-  const [hasLetterboxd, setHasLetterboxd]   = useState(false)
+  const [hasLetterboxd, setHasLetterboxd]       = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -151,7 +151,8 @@ export default function Home() {
       // Show onboarding if:
       // 1. Coming from signup with ?onboard=true
       // 2. New Google user (isNewUser flag in session)
-      const shouldOnboard = searchParams.get('onboard') === 'true' || !!(session.user as any)?.isNewUser
+      const shouldOnboard =
+        searchParams.get('onboard') === 'true' || !!(session.user as any)?.isNewUser
 
       if (shouldOnboard) {
         fetch('/api/letterboxd/import')
@@ -248,7 +249,7 @@ export default function Home() {
     return (
       <main className="min-h-screen flex items-center justify-center">
         <div className="flex gap-2">
-          {[0,1,2].map(i => (
+          {[0, 1, 2].map(i => (
             <div key={i} className="w-2 h-2 rounded-full bg-[#C9A84C] animate-bounce"
               style={{ animationDelay: `${i * 0.15}s` }} />
           ))}
@@ -261,14 +262,32 @@ export default function Home() {
     <main className="min-h-screen">
       <header className="border-b border-[rgba(201,168,76,0.15)] bg-[rgba(13,13,13,0.9)] backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-[1600px] mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-[#E8C97A]"
-              style={{ fontFamily: 'Playfair Display, serif' }}>
-              CineMatch
-            </h1>
-            <p className="text-xs text-[#8C8375] mt-0.5 tracking-widest uppercase">Movie Discovery</p>
+
+          {/* Left: branding + nav */}
+          <div className="flex items-center gap-8">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-[#E8C97A]"
+                style={{ fontFamily: 'Playfair Display, serif' }}>
+                CineMatch
+              </h1>
+              <p className="text-xs text-[#8C8375] mt-0.5 tracking-widest uppercase">Movie Discovery</p>
+            </div>
+            <nav className="flex items-center gap-1">
+              <span
+                className="px-3 py-1.5 rounded-md text-xs font-medium tracking-wider uppercase text-[#E8C97A] bg-[rgba(201,168,76,0.12)] border border-[rgba(201,168,76,0.2)] cursor-default"
+              >
+                Browse
+              </span>
+              <Link
+                href="/next-watch"
+                className="px-3 py-1.5 rounded-md text-xs font-medium tracking-wider uppercase text-[#8C8375] hover:text-[#E8C97A] hover:bg-[rgba(201,168,76,0.08)] transition-colors"
+              >
+                My Next Watch
+              </Link>
+            </nav>
           </div>
 
+          {/* Right: sort + user controls */}
           <div className="flex items-center gap-4">
             <select
               value={sortBy}
@@ -317,6 +336,7 @@ export default function Home() {
               </Link>
             )}
           </div>
+
         </div>
       </header>
 
@@ -350,7 +370,7 @@ export default function Home() {
           <div ref={sentinelRef} className="h-20 flex items-center justify-center mt-4">
             {loadingMore && (
               <div className="flex gap-2">
-                {[0,1,2].map(i => (
+                {[0, 1, 2].map(i => (
                   <div key={i} className="w-2 h-2 rounded-full bg-[#C9A84C] animate-bounce"
                     style={{ animationDelay: `${i * 0.15}s` }} />
                 ))}
